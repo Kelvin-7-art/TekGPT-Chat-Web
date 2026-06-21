@@ -1,6 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { MessageSquare } from "lucide-react";
-import aiIcon from "@assets/image_1782035573865.png";
+const aiIcon = "/ai-icon.png";
 
 export default function Home() {
   return (
@@ -9,8 +9,8 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
         <div className="relative z-10 text-center max-w-2xl mx-auto space-y-8 animate-in fade-in zoom-in duration-700">
           {/* Icon */}
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-2xl shadow-black">
-            <img src={aiIcon} alt="AI" className="w-12 h-12 invert" />
+          <div className="w-20 h-20 mx-auto rounded-2xl overflow-hidden" style={{ background: "#000" }}>
+            <img src={aiIcon} alt="AI" className="w-20 h-20 object-cover" style={{ filter: "invert(1)" }} />
           </div>
 
           <div className="space-y-3">

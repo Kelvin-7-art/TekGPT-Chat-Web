@@ -68,6 +68,13 @@ export function registerChatRoutes(app: Express): void {
       // Save user message
       await chatStorage.createMessage(conversationId, "user", content);
 
+      // Auto-title on first message
+      const allMsgs = await chatStorage.getMessagesByConversation(conversationId);
+      if (allMsgs.length === 1) {
+        const title = content.trim().slice(0, 50) + (content.trim().length > 50 ? "…" : "");
+        await chatStorage.updateConversationTitle(conversationId, title);
+      }
+
       // Get conversation history for context
       const messages = await chatStorage.getMessagesByConversation(conversationId);
       const chatMessages = messages.map((m) => ({

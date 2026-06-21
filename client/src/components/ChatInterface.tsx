@@ -2,13 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useSendMessage } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, StopCircle, User, Copy, Check, Code2 } from "lucide-react";
-import aiIcon from "@assets/image_1782035573865.png";
+import { Send, StopCircle, Copy, Check, Code2, ArrowUp } from "lucide-react";
+const aiIcon = "/ai-icon.png";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { AnimatePresence, motion } from "framer-motion";
 import { type Message } from "@shared/schema";
-import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -56,7 +55,6 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
       content: userContent,
       createdAt: new Date(),
     };
-
     const assistantMessage: Message = {
       id: Date.now() + 1,
       conversationId,
@@ -70,20 +68,14 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     try {
       await sendMessage(conversationId, userContent, (chunk) => {
         setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMsg = newMessages[newMessages.length - 1];
-          if (lastMsg.role === "assistant") {
-            lastMsg.content += chunk;
-          }
-          return newMessages;
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last.role === "assistant") last.content += chunk;
+          return next;
         });
       });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to send message. Please try again.", variant: "destructive" });
     }
   };
 
@@ -95,28 +87,28 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
   };
 
   return (
-    <div className="flex flex-col h-full bg-background relative">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 space-y-6 md:space-y-8">
+    <div className="flex flex-col h-full bg-black">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto py-6 px-4 md:px-8 space-y-2">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto p-8 animate-in fade-in zoom-in duration-500">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary/20 to-accent/20 flex items-center justify-center mb-6 shadow-xl shadow-primary/10 border border-white/5">
-              <img src={aiIcon} alt="AI" className="h-10 w-10 invert" />
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto px-4 animate-in fade-in zoom-in duration-500">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6" style={{ background: "#1a1a1a" }}>
+              <img src={aiIcon} alt="AI" className="h-16 w-16 object-cover" style={{ filter: "invert(1)" }} />
             </div>
-            <h2 className="text-3xl font-display font-bold mb-3 tracking-tight text-foreground">How can I help you today?</h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              I can help you write code, draft emails, analyze data, or just brainstorm ideas.
+            <h2 className="text-2xl font-semibold mb-2 text-white">How can I help you today?</h2>
+            <p className="text-white/40 text-sm leading-relaxed mb-8">
+              Ask me anything — code, ideas, analysis, writing.
             </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-10 w-full">
-              {["Explain quantum computing", "Write a python script", "Design a logo concept", "Debug my React code"].map((prompt) => (
+            <div className="grid grid-cols-2 gap-2 w-full max-w-md">
+              {["Write a Python script", "Explain quantum computing", "Debug my code", "Draft an email"].map((p) => (
                 <button
-                  key={prompt}
-                  data-testid={`prompt-${prompt.toLowerCase().replace(/\s+/g, '-')}`}
-                  onClick={() => setInputValue(prompt)}
-                  className="text-sm p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/30 transition-all text-left hover:shadow-md text-foreground/80 hover:text-foreground"
+                  key={p}
+                  data-testid={`prompt-${p.toLowerCase().replace(/\s+/g, '-')}`}
+                  onClick={() => setInputValue(p)}
+                  className="text-xs px-4 py-3 rounded-xl text-left text-white/60 hover:text-white/90 transition-all"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  {prompt}
+                  {p}
                 </button>
               ))}
             </div>
@@ -126,125 +118,108 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className={cn(
-                  "flex gap-4 md:gap-6 max-w-4xl mx-auto w-full group",
-                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
+                  "flex max-w-3xl mx-auto w-full",
+                  msg.role === "user" ? "justify-end" : "justify-start gap-3"
                 )}
               >
-                {/* Avatar */}
-                <div className={cn(
-                  "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border",
-                  msg.role === "user"
-                    ? "bg-gradient-to-br from-primary to-accent border-transparent text-primary-foreground"
-                    : "bg-white/5 border-white/10 text-foreground"
-                )}>
-                  {msg.role === "user"
-                    ? <User className="h-5 w-5" />
-                    : <img src={aiIcon} alt="AI" className="h-5 w-5 invert" />
-                  }
-                </div>
-
-                {/* Content Bubble */}
-                <div className={cn(
-                  "flex flex-col gap-1 min-w-0 max-w-[85%] md:max-w-[80%]",
-                  msg.role === "user" ? "items-end" : "items-start"
-                )}>
-                  <div className={cn(
-                    "rounded-2xl shadow-sm text-sm md:text-base leading-relaxed break-words",
-                    msg.role === "user"
-                      ? "px-5 py-3.5 bg-primary text-primary-foreground rounded-tr-sm"
-                      : "w-full bg-white/5 border border-white/10 text-foreground rounded-tl-sm prose dark:prose-invert max-w-none px-5 py-4"
-                  )}>
-                    {msg.role === "user" ? (
-                      msg.content
-                    ) : (
-                      <ReactMarkdown
-                        components={{
-                          code({ node, className, children, ...props }: any) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            const language = match ? match[1] : '';
-                            const isBlock = !!match;
-
-                            if (isBlock) {
-                              return (
-                                <CodeBlock
-                                  language={language}
-                                  code={String(children).replace(/\n$/, '')}
-                                />
-                              );
-                            }
-                            return (
-                              <code className="bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-violet-300" {...props}>
-                                {children}
-                              </code>
-                            );
-                          },
-                          pre({ children }: any) {
-                            return <>{children}</>;
-                          },
-                        }}
-                      >
-                        {msg.content || (isStreaming && index === messages.length - 1 ? "Thinking..." : "")}
-                      </ReactMarkdown>
-                    )}
+                {/* AI avatar — only for assistant */}
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-lg shrink-0 mt-1 flex items-center justify-center" style={{ background: "#1a1a1a" }}>
+                    <img src={aiIcon} alt="AI" className="h-7 w-7 object-cover" style={{ filter: "invert(1)" }} />
                   </div>
+                )}
 
-                  {/* Timestamp */}
-                  <span className="text-[11px] text-muted-foreground/50 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : 'Just now'}
-                  </span>
+                {/* Bubble */}
+                <div className={cn(
+                  "text-sm leading-relaxed",
+                  msg.role === "user"
+                    ? "max-w-[75%] px-4 py-2.5 rounded-[20px] text-white/90"
+                    : "flex-1 text-white/85 prose dark:prose-invert max-w-none pt-1"
+                )}
+                  style={msg.role === "user" ? { background: "#2f2f2f" } : {}}
+                >
+                  {msg.role === "user" ? (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        code({ className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          if (match) {
+                            return (
+                              <CodeBlock
+                                language={match[1]}
+                                code={String(children).replace(/\n$/, '')}
+                              />
+                            );
+                          }
+                          return (
+                            <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-violet-300" {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                        pre({ children }: any) { return <>{children}</>; },
+                      }}
+                    >
+                      {msg.content || (isStreaming && index === messages.length - 1 ? "▍" : "")}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         )}
-        <div ref={bottomRef} className="h-4" />
+        <div ref={bottomRef} className="h-2" />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 md:p-6 bg-gradient-to-t from-background via-background to-transparent pt-10">
-        <div className="max-w-4xl mx-auto relative group">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-          <div className="relative bg-white/5 rounded-2xl shadow-xl border border-white/10 flex flex-col gap-2 p-2">
+      {/* Input */}
+      <div className="px-4 md:px-8 pb-6 pt-2">
+        <div className="max-w-3xl mx-auto">
+          <div
+            className="flex flex-col rounded-2xl overflow-hidden"
+            style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
             <Textarea
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Send a message..."
+              placeholder="Message AI..."
               data-testid="input-message"
-              className="min-h-[50px] max-h-[200px] border-none focus-visible:ring-0 shadow-none resize-none px-4 py-3 bg-transparent text-base text-foreground placeholder:text-muted-foreground/50"
+              rows={1}
+              className="min-h-[52px] max-h-[200px] border-none focus-visible:ring-0 shadow-none resize-none px-4 pt-3.5 pb-2 bg-transparent text-sm text-white/90 placeholder:text-white/25 leading-relaxed"
             />
-
-            <div className="flex justify-between items-center px-2 pb-1">
-              <span className="text-[10px] text-muted-foreground/40 bg-white/5 px-2 py-1 rounded font-medium hidden md:inline-block border border-white/5">
+            <div className="flex items-center justify-between px-3 pb-3">
+              <span className="text-[10px] text-white/20 hidden md:block">
                 Enter to send · Shift+Enter for newline
               </span>
-
               <Button
                 onClick={isStreaming ? cancelStream : () => handleSubmit()}
                 size="icon"
                 data-testid="button-send"
                 disabled={!inputValue.trim() && !isStreaming}
                 className={cn(
-                  "h-10 w-10 rounded-xl transition-all duration-300 ml-auto",
+                  "h-8 w-8 rounded-lg ml-auto transition-all",
                   isStreaming
-                    ? "bg-red-500/80 text-white hover:bg-red-500"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
+                    ? "bg-white/20 hover:bg-white/30 text-white"
+                    : inputValue.trim()
+                      ? "bg-white text-black hover:bg-white/90"
+                      : "bg-white/10 text-white/30 cursor-not-allowed"
                 )}
               >
-                {isStreaming ? (
-                  <StopCircle className="h-5 w-5 animate-pulse" />
-                ) : (
-                  <Send className="h-5 w-5 ml-0.5" />
-                )}
+                {isStreaming
+                  ? <StopCircle className="h-4 w-4" />
+                  : <ArrowUp className="h-4 w-4" />
+                }
               </Button>
             </div>
           </div>
-          <p className="text-center text-[10px] text-muted-foreground/40 mt-3">
+          <p className="text-center text-[10px] text-white/20 mt-2">
             AI can make mistakes. Consider checking important information.
           </p>
         </div>
@@ -253,22 +228,13 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
   );
 }
 
-// Language display name map
 const LANG_DISPLAY: Record<string, string> = {
-  js: "JavaScript", javascript: "JavaScript",
-  ts: "TypeScript", typescript: "TypeScript",
-  py: "Python", python: "Python",
-  rb: "Ruby", ruby: "Ruby",
-  go: "Go", rust: "Rust",
-  java: "Java", cpp: "C++", c: "C",
-  cs: "C#", csharp: "C#",
-  php: "PHP", swift: "Swift",
-  kt: "Kotlin", kotlin: "Kotlin",
-  html: "HTML", css: "CSS", scss: "SCSS",
-  json: "JSON", yaml: "YAML", yml: "YAML",
-  sh: "Shell", bash: "Bash", shell: "Shell",
-  sql: "SQL", md: "Markdown", markdown: "Markdown",
-  jsx: "JSX", tsx: "TSX",
+  js: "JavaScript", javascript: "JavaScript", ts: "TypeScript", typescript: "TypeScript",
+  py: "Python", python: "Python", rb: "Ruby", ruby: "Ruby", go: "Go", rust: "Rust",
+  java: "Java", cpp: "C++", c: "C", cs: "C#", csharp: "C#", php: "PHP", swift: "Swift",
+  kt: "Kotlin", kotlin: "Kotlin", html: "HTML", css: "CSS", scss: "SCSS",
+  json: "JSON", yaml: "YAML", yml: "YAML", sh: "Shell", bash: "Bash", shell: "Shell",
+  sql: "SQL", md: "Markdown", markdown: "Markdown", jsx: "JSX", tsx: "TSX",
 };
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
@@ -282,79 +248,32 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   };
 
   return (
-    <div
-      data-testid="code-block"
-      className="rounded-xl overflow-hidden border border-white/10 my-3"
-      style={{ background: "#0d1117" }}
-    >
-      {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10" style={{ background: "#161b22" }}>
+    <div data-testid="code-block" className="rounded-xl overflow-hidden my-3" style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "#161b22", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-2">
-          <Code2 className="h-4 w-4 text-violet-400" />
-          <span className="text-sm font-semibold text-slate-200 font-mono">{displayName}</span>
+          <Code2 className="h-3.5 w-3.5 text-violet-400" />
+          <span className="text-xs font-medium text-white/70 font-mono">{displayName}</span>
         </div>
         <button
           data-testid="button-copy-code"
           onClick={copy}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-md border border-white/10"
+          className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition-colors px-2 py-0.5 rounded"
         >
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5 text-green-400" />
-              <span className="text-green-400">Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" />
-              <span>Copy</span>
-            </>
-          )}
+          {copied
+            ? <><Check className="h-3 w-3 text-green-400" /><span className="text-green-400">Copied</span></>
+            : <><Copy className="h-3 w-3" /><span>Copy</span></>
+          }
         </button>
       </div>
-
-      {/* Code content */}
       <SyntaxHighlighter
         language={language || "text"}
         style={oneDark}
-        customStyle={{
-          margin: 0,
-          padding: "1.25rem 1.5rem",
-          background: "#0d1117",
-          fontSize: "0.875rem",
-          lineHeight: "1.6",
-          fontFamily: "'JetBrains Mono', 'Fira Code', 'Geist Mono', monospace",
-        }}
-        showLineNumbers={code.split('\n').length > 5}
-        lineNumberStyle={{
-          color: "#444c56",
-          userSelect: "none",
-          minWidth: "2.5em",
-        }}
-        wrapLongLines={false}
+        customStyle={{ margin: 0, padding: "1rem 1.25rem", background: "#0d1117", fontSize: "0.8125rem", lineHeight: "1.65", fontFamily: "'JetBrains Mono', monospace" }}
+        showLineNumbers={code.split('\n').length > 4}
+        lineNumberStyle={{ color: "#3d3d3d", userSelect: "none", minWidth: "2em" }}
       >
         {code}
       </SyntaxHighlighter>
     </div>
-  );
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Button
-      size="icon"
-      variant="secondary"
-      className="h-6 w-6 bg-white/10 hover:bg-white/20 border-0"
-      onClick={copy}
-    >
-      {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
-    </Button>
   );
 }
