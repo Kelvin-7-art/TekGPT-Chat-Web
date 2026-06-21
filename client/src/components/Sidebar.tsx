@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { useConversations, useCreateConversation, useDeleteConversation } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, X, Menu, Search, Loader2 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Menu, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import aiIcon from "@assets/image_1782035573865.png";
 
 export function Sidebar({ className }: { className?: string }) {
   const [location] = useLocation();
@@ -14,86 +15,107 @@ export function Sidebar({ className }: { className?: string }) {
   const deleteConversation = useDeleteConversation();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredConversations = conversations?.filter(c => 
+  const filteredConversations = conversations?.filter(c =>
     c.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCreateNew = async () => {
     const newConv = await createConversation.mutateAsync();
-    // Use window.location as wouter's setLocation might be outside context here if nested wrong, 
-    // but typically useLocation is fine. Let's assume standard behavior.
-    // We need to navigate to the new conversation.
     if (newConv) {
-      // Direct navigation hack if needed, or better:
       window.location.href = `/chat/${newConv.id}`;
     }
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-card/50 backdrop-blur-xl border-r border-border/40">
-      {/* Header */}
-      <div className="p-4 border-b border-border/40">
-        <Button 
-          onClick={handleCreateNew} 
+    <div className="flex flex-col h-full border-r" style={{ background: "#000", borderColor: "rgba(255,255,255,0.08)" }}>
+      {/* Brand Header */}
+      <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-3 mb-4 px-1">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+            <img src={aiIcon} alt="AI" className="w-5 h-5 invert" />
+          </div>
+          <span className="font-semibold text-white text-base">AI Chat</span>
+        </div>
+        <Button
+          onClick={handleCreateNew}
           disabled={createConversation.isPending}
-          className="w-full justify-start gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all duration-300 h-12 rounded-xl text-base font-medium"
+          data-testid="button-new-chat"
+          className="w-full justify-start gap-2 h-10 rounded-xl text-sm font-medium bg-white/10 hover:bg-white/15 text-white border border-white/10 hover:border-white/20 transition-all shadow-none"
         >
           {createConversation.isPending ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Plus className="h-5 w-5" />
+            <Plus className="h-4 w-4" />
           )}
           New Chat
         </Button>
       </div>
 
       {/* Search */}
-      <div className="px-4 py-3">
+      <div className="px-3 py-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input 
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+          <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search conversations..."
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-muted/50 border border-transparent focus:bg-background focus:border-primary/20 focus:ring-2 focus:ring-primary/10 transition-all text-sm outline-none"
+            placeholder="Search..."
+            data-testid="input-search"
+            className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none transition-all text-white/80 placeholder:text-white/25"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
           />
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 custom-scrollbar">
+      {/* Conversation List */}
+      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
         {isLoading ? (
-          <div className="space-y-3 px-2">
+          <div className="space-y-2 px-2 pt-2">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-muted/50 rounded-lg animate-pulse" />
+              <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
             ))}
           </div>
         ) : filteredConversations?.length === 0 ? (
-          <div className="text-center py-10 px-4 text-muted-foreground text-sm">
-            <MessageSquare className="h-8 w-8 mx-auto mb-3 opacity-20" />
-            <p>No conversations found</p>
+          <div className="text-center py-10 px-4 text-white/25 text-sm">
+            <MessageSquare className="h-7 w-7 mx-auto mb-3 opacity-20" />
+            <p>No conversations yet</p>
           </div>
         ) : (
           filteredConversations?.map((conv) => (
-            <div
-              key={conv.id}
-              className="group relative flex items-center"
-            >
+            <div key={conv.id} className="group relative flex items-center">
               <Link
                 href={`/chat/${conv.id}`}
+                data-testid={`link-conversation-${conv.id}`}
                 className={cn(
-                  "flex-1 flex flex-col gap-0.5 px-4 py-3 rounded-lg text-sm transition-all duration-200 border border-transparent",
+                  "flex-1 flex flex-col gap-0.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 border border-transparent",
                   location === `/chat/${conv.id}`
-                    ? "bg-primary/10 text-primary border-primary/10 shadow-sm"
-                    : "text-foreground/80 hover:bg-muted/60 hover:text-foreground"
+                    ? "text-white border-white/10"
+                    : "text-white/60 hover:text-white/90"
                 )}
+                style={
+                  location === `/chat/${conv.id}`
+                    ? { background: "rgba(255,255,255,0.08)" }
+                    : {}
+                }
+                onMouseEnter={e => {
+                  if (location !== `/chat/${conv.id}`) {
+                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (location !== `/chat/${conv.id}`) {
+                    (e.currentTarget as HTMLElement).style.background = "";
+                  }
+                }}
               >
-                <span className="font-medium truncate pr-6 block">{conv.title}</span>
-                <span className="text-[10px] text-muted-foreground/70 font-normal">
+                <span className="font-medium truncate pr-6 block text-sm">{conv.title}</span>
+                <span className="text-[10px] text-white/25 font-normal">
                   {formatDistanceToNow(new Date(conv.createdAt), { addSuffix: true })}
                 </span>
               </Link>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -102,9 +124,10 @@ export function Sidebar({ className }: { className?: string }) {
                   e.stopPropagation();
                   deleteConversation.mutate(conv.id);
                 }}
-                className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                data-testid={`button-delete-${conv.id}`}
+                className="absolute right-1.5 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 text-white/30 hover:text-red-400 hover:bg-red-400/10 rounded-md"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             </div>
           ))
@@ -112,14 +135,14 @@ export function Sidebar({ className }: { className?: string }) {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border/40 bg-muted/10">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border border-primary/10">
-            <span className="font-bold text-xs text-primary">AI</span>
+      <div className="p-3 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center border border-white/10 shrink-0">
+            <img src={aiIcon} alt="AI" className="w-4 h-4 invert" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Guest User</p>
-            <p className="text-xs text-muted-foreground truncate">Pro Plan</p>
+            <p className="text-xs font-medium text-white/80 truncate">Guest User</p>
+            <p className="text-[10px] text-white/30 truncate">Powered by Groq</p>
           </div>
         </div>
       </div>
@@ -131,17 +154,17 @@ export function Sidebar({ className }: { className?: string }) {
       {/* Mobile Drawer */}
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden absolute left-4 top-4 z-50">
-            <Menu className="h-6 w-6" />
+          <Button variant="ghost" size="icon" className="md:hidden absolute left-4 top-4 z-50 text-white/60 hover:text-white hover:bg-white/10">
+            <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-80 border-r border-border/40">
+        <SheetContent side="left" className="p-0 w-72 border-r-0">
           <SidebarContent />
         </SheetContent>
       </Sheet>
 
       {/* Desktop Sidebar */}
-      <div className={cn("hidden md:block w-80 h-screen", className)}>
+      <div className={cn("hidden md:block w-72 h-screen shrink-0", className)}>
         <SidebarContent />
       </div>
     </>

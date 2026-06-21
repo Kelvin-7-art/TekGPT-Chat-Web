@@ -8,66 +8,68 @@
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
 
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
+  --background: 0 0% 0%;
+  --foreground: 0 0% 93%;
 
   --primary: 235 86% 65%;
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 222 47% 11%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 0 0% 8%;
+  --secondary-foreground: 0 0% 93%;
 
-  --muted: 223 47% 11%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 0 0% 8%;
+  --muted-foreground: 0 0% 55%;
 
-  --accent: 262 80% 50%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 262 80% 60%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 63% 45%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
   --ring: 235 86% 65%;
 
-  --card: 222 47% 7%;
-  --card-foreground: 213 31% 91%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 93%;
 
   --radius: 1rem;
 }
 
 .dark {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
+  --background: 0 0% 0%;
+  --foreground: 0 0% 93%;
 
   --primary: 235 86% 65%;
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 222 47% 11%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 0 0% 8%;
+  --secondary-foreground: 0 0% 93%;
 
-  --muted: 223 47% 11%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 0 0% 8%;
+  --muted-foreground: 0 0% 55%;
 
-  --accent: 262 80% 50%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 262 80% 60%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 63% 45%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
   --ring: 235 86% 65%;
 
-  --card: 222 47% 7%;
-  --card-foreground: 213 31% 91%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 93%;
 }
 
 @layer base {
-  body {
-    @apply bg-background text-foreground antialiased font-body;
+  * {
+    @apply border-border;
   }
-
+  body {
+    @apply bg-black text-foreground antialiased font-body;
+  }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
   }
@@ -75,14 +77,18 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.18);
 }
 
 /* Markdown Styles */
@@ -96,7 +102,8 @@
   @apply list-decimal list-outside ml-4 mb-4;
 }
 .prose code {
-  @apply bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-violet-300;
+  background: rgba(255,255,255,0.08);
+  @apply px-1.5 py-0.5 rounded text-sm font-mono text-violet-300;
 }
 .prose pre {
   @apply p-0 rounded-xl overflow-hidden mb-4 border-0 bg-transparent;

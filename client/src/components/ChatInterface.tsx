@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useSendMessage } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, StopCircle, User, Sparkles, Copy, Check, Code2 } from "lucide-react";
+import { Send, StopCircle, User, Copy, Check, Code2 } from "lucide-react";
+import aiIcon from "@assets/image_1782035573865.png";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { AnimatePresence, motion } from "framer-motion";
@@ -100,7 +101,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto p-8 animate-in fade-in zoom-in duration-500">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary/20 to-accent/20 flex items-center justify-center mb-6 shadow-xl shadow-primary/10 border border-white/5">
-              <Sparkles className="h-10 w-10 text-primary" />
+              <img src={aiIcon} alt="AI" className="h-10 w-10 invert" />
             </div>
             <h2 className="text-3xl font-display font-bold mb-3 tracking-tight text-foreground">How can I help you today?</h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
@@ -140,7 +141,10 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                     ? "bg-gradient-to-br from-primary to-accent border-transparent text-primary-foreground"
                     : "bg-white/5 border-white/10 text-foreground"
                 )}>
-                  {msg.role === "user" ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5 text-primary" />}
+                  {msg.role === "user"
+                    ? <User className="h-5 w-5" />
+                    : <img src={aiIcon} alt="AI" className="h-5 w-5 invert" />
+                  }
                 </div>
 
                 {/* Content Bubble */}
