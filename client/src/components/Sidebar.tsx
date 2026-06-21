@@ -40,7 +40,7 @@ export function Sidebar({ className }: { className?: string }) {
               style={{ filter: "invert(1)" }}
             />
           </div>
-          <span className="font-semibold text-white/90 text-sm tracking-wide">AI Chat</span>
+          <span className="font-semibold text-white/90 text-sm tracking-wide">TekGPT</span>
         </div>
       </div>
 
