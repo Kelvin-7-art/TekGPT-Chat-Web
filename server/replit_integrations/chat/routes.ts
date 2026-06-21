@@ -3,8 +3,8 @@ import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
 export function registerChatRoutes(app: Express): void {
@@ -82,10 +82,10 @@ export function registerChatRoutes(app: Express): void {
 
       // Stream response from OpenAI
       const stream = await openai.chat.completions.create({
-        model: "gpt-5.4",
+        model: "llama-3.3-70b-versatile",
         messages: chatMessages,
         stream: true,
-        max_completion_tokens: 8192,
+        max_tokens: 8192,
       });
 
       let fullResponse = "";
