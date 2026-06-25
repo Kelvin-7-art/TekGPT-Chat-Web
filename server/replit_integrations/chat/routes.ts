@@ -2,10 +2,14 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
-// DeepSeek via GitHub Models marketplace — OpenAI-compatible
+// OpenRouter API — OpenAI-compatible, access to hundreds of models
 const openai = new OpenAI({
-  apiKey: process.env.GITHUB_TOKEN,
-  baseURL: "https://models.inference.ai.azure.com",
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "https://tekgpt.replit.app",
+    "X-Title": "TekGPT",
+  },
 });
 
 // Rough token estimate: 1 token ≈ 4 chars
@@ -128,9 +132,9 @@ export function registerChatRoutes(app: Express): void {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // DeepSeek-V3 via GitHub Models: excellent for code, large context, fast
+      // DeepSeek V3 via OpenRouter: excellent for code, large context, fast
       const stream = await openai.chat.completions.create({
-        model: "DeepSeek-V3-0324",
+        model: "deepseek/deepseek-chat",
         messages: [systemMessage, ...chatMessages],
         stream: true,
         max_tokens: 16384,
@@ -161,7 +165,9 @@ export function registerChatRoutes(app: Express): void {
       } else if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
         userError = "Rate limit reached. Please wait a moment and try again.";
       } else if (error?.status === 401) {
-        userError = "GitHub token is invalid or expired. Please update the GITHUB_TOKEN secret.";
+        userError = "OpenRouter API key is invalid or expired. Please update the OPENROUTER_API_KEY secret.";
+      } else if (error?.status === 402) {
+        userError = "OpenRouter account has insufficient credits. Please top up at openrouter.ai.";
       }
 
       if (res.headersSent) {
