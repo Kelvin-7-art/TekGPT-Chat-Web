@@ -7,6 +7,33 @@ const openai = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+// Rough token estimate: 1 token ≈ 4 chars
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// Trim conversation history to stay within token budget
+// Strategy: always keep the first message (for context) + as many recent messages as fit
+function trimHistory(
+  messages: { role: string; content: string }[],
+  maxTokens: number
+): { role: string; content: string }[] {
+  if (messages.length === 0) return [];
+
+  let total = 0;
+  const kept: { role: string; content: string }[] = [];
+
+  // Walk backwards (most recent first), keeping messages that fit
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const t = estimateTokens(messages[i].content) + 4; // +4 for role overhead
+    if (total + t > maxTokens && kept.length > 0) break; // always keep at least the latest
+    total += t;
+    kept.unshift(messages[i]);
+  }
+
+  return kept;
+}
+
 export function registerChatRoutes(app: Express): void {
   // Get all conversations
   app.get("/api/conversations", async (req: Request, res: Response) => {
@@ -75,12 +102,15 @@ export function registerChatRoutes(app: Express): void {
         await chatStorage.updateConversationTitle(conversationId, title);
       }
 
-      // Get conversation history for context
+      // Get conversation history and trim to fit token budget
+      // llama-3.1-8b-instant free tier: 30,000 TPM
+      // Reserve 8192 for output + ~300 for system prompt = ~21,500 for conversation history
       const messages = await chatStorage.getMessagesByConversation(conversationId);
-      const chatMessages = messages.map((m) => ({
+      const rawHistory = messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       }));
+      const chatMessages = trimHistory(rawHistory, 21000);
 
       const systemMessage = {
         role: "system" as const,
@@ -97,9 +127,9 @@ export function registerChatRoutes(app: Express): void {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // Stream response from OpenAI
+      // llama-3.1-8b-instant: 30,000 TPM (vs 12,000 for 70b) — handles large code files
       const stream = await openai.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         messages: [systemMessage, ...chatMessages],
         stream: true,
         max_tokens: 8192,
@@ -120,16 +150,23 @@ export function registerChatRoutes(app: Express): void {
 
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
-      // Check if headers already sent (SSE streaming started)
+
+      // Build a user-friendly error message
+      let userError = "Failed to send message. Please try again.";
+      if (error?.status === 413 || error?.code === "rate_limit_exceeded") {
+        userError = "Your message is too large for the free tier. Try splitting it into smaller sections and send each part separately.";
+      } else if (error?.status === 429) {
+        userError = "Too many requests. Please wait a moment and try again.";
+      }
+
       if (res.headersSent) {
-        res.write(`data: ${JSON.stringify({ error: "Failed to send message" })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: userError })}\n\n`);
         res.end();
       } else {
-        res.status(500).json({ error: "Failed to send message" });
+        res.status(500).json({ error: userError });
       }
     }
   });
 }
-

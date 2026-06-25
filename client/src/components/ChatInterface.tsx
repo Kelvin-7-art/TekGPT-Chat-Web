@@ -74,8 +74,10 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
           return next;
         });
       });
-    } catch {
-      toast({ title: "Error", description: "Failed to send message. Please try again.", variant: "destructive" });
+    } catch (err: any) {
+      // Remove the empty assistant placeholder on error
+      setMessages(prev => prev.slice(0, -1));
+      toast({ title: "Error", description: err?.message || "Failed to send message. Please try again.", variant: "destructive" });
     }
   };
 

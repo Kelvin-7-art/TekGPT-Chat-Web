@@ -110,7 +110,14 @@ export function useSendMessage() {
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) throw new Error("Failed to send message");
+      if (!response.ok) {
+        let errorMsg = "Failed to send message. Please try again.";
+        try {
+          const body = await response.json();
+          if (body?.error) errorMsg = body.error;
+        } catch {}
+        throw new Error(errorMsg);
+      }
       if (!response.body) throw new Error("No response body");
 
       const reader = response.body.getReader();
@@ -128,17 +135,18 @@ export function useSendMessage() {
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             const jsonStr = line.slice(6);
+            let data: any;
             try {
-              const data = JSON.parse(jsonStr);
-              if (data.done) {
-                // Stream complete
-              } else if (data.content) {
-                onChunk(data.content);
-              } else if (data.error) {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              console.error("Error parsing stream chunk", e);
+              data = JSON.parse(jsonStr);
+            } catch {
+              continue; // skip malformed lines
+            }
+            if (data.done) {
+              // Stream complete
+            } else if (data.content) {
+              onChunk(data.content);
+            } else if (data.error) {
+              throw new Error(data.error); // now propagates correctly
             }
           }
         }
