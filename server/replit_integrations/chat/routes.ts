@@ -2,9 +2,10 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
+// GitHub Models API — OpenAI-compatible, much higher limits than Groq free tier
 const openai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
+  apiKey: process.env.GITHUB_TOKEN,
+  baseURL: "https://models.inference.ai.azure.com",
 });
 
 // Rough token estimate: 1 token ≈ 4 chars
@@ -103,14 +104,14 @@ export function registerChatRoutes(app: Express): void {
       }
 
       // Get conversation history and trim to fit token budget
-      // llama-3.1-8b-instant free tier: 30,000 TPM
-      // Reserve 8192 for output + ~300 for system prompt = ~21,500 for conversation history
+      // GitHub Models gpt-4o-mini: 128K context window
+      // Reserve 16384 for output + ~300 for system prompt = ~110,000 for conversation history
       const messages = await chatStorage.getMessagesByConversation(conversationId);
       const rawHistory = messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       }));
-      const chatMessages = trimHistory(rawHistory, 21000);
+      const chatMessages = trimHistory(rawHistory, 110000);
 
       const systemMessage = {
         role: "system" as const,
@@ -127,12 +128,12 @@ export function registerChatRoutes(app: Express): void {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // llama-3.1-8b-instant: 30,000 TPM (vs 12,000 for 70b) — handles large code files
+      // gpt-4o-mini via GitHub Models: 128K context, no per-minute token cap issues
       const stream = await openai.chat.completions.create({
-        model: "llama-3.1-8b-instant",
+        model: "gpt-4o-mini",
         messages: [systemMessage, ...chatMessages],
         stream: true,
-        max_tokens: 8192,
+        max_tokens: 16384,
       });
 
       let fullResponse = "";
@@ -155,10 +156,12 @@ export function registerChatRoutes(app: Express): void {
 
       // Build a user-friendly error message
       let userError = "Failed to send message. Please try again.";
-      if (error?.status === 413 || error?.code === "rate_limit_exceeded") {
-        userError = "Your message is too large for the free tier. Try splitting it into smaller sections and send each part separately.";
-      } else if (error?.status === 429) {
-        userError = "Too many requests. Please wait a moment and try again.";
+      if (error?.status === 413) {
+        userError = "Your message is too large. Try splitting it into smaller sections and send each part separately.";
+      } else if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
+        userError = "Rate limit reached. Please wait a moment and try again.";
+      } else if (error?.status === 401) {
+        userError = "GitHub token is invalid or expired. Please update the GITHUB_TOKEN secret.";
       }
 
       if (res.headersSent) {
