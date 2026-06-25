@@ -82,6 +82,16 @@ export function registerChatRoutes(app: Express): void {
         content: m.content,
       }));
 
+      const systemMessage = {
+        role: "system" as const,
+        content: `You are TekGPT, a highly capable AI coding assistant. When writing or fixing code:
+- ALWAYS output the COMPLETE code in full — never truncate, abbreviate, or use placeholders like "# ... rest of code ..." or "// same as before"
+- If asked to fix or rewrite code, reproduce every line of the original that stays the same, plus your changes
+- For long files (500+ lines), still write every single line — do not skip any sections
+- Use proper markdown code blocks with language tags
+- You can handle files up to 1000+ lines without issue`,
+      };
+
       // Set up SSE
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -90,7 +100,7 @@ export function registerChatRoutes(app: Express): void {
       // Stream response from OpenAI
       const stream = await openai.chat.completions.create({
         model: "llama-3.3-70b-versatile",
-        messages: chatMessages,
+        messages: [systemMessage, ...chatMessages],
         stream: true,
         max_tokens: 8192,
       });
