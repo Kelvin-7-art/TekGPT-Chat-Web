@@ -20,9 +20,9 @@ function estimateTokens(text: string): number {
 // Trim conversation history to stay within token budget
 // Strategy: always keep the first message (for context) + as many recent messages as fit
 function trimHistory(
-  messages: { role: string; content: string }[],
+  messages: any[],
   maxTokens: number
-): { role: string; content: string }[] {
+): any[] {
   if (messages.length === 0) return [];
 
   let total = 0;
@@ -30,7 +30,10 @@ function trimHistory(
 
   // Walk backwards (most recent first), keeping messages that fit
   for (let i = messages.length - 1; i >= 0; i--) {
-    const t = estimateTokens(messages[i].content) + 4; // +4 for role overhead
+    const content = typeof messages[i].content === "string"
+      ? messages[i].content
+      : JSON.stringify(messages[i].content);
+    const t = estimateTokens(content) + 4; // +4 for role overhead
     if (total + t > maxTokens && kept.length > 0) break; // always keep at least the latest
     total += t;
     kept.unshift(messages[i]);
@@ -95,15 +98,26 @@ export function registerChatRoutes(app: Express): void {
   app.post("/api/conversations/:id/messages", async (req: Request, res: Response) => {
     try {
       const conversationId = parseInt(req.params.id);
-      const { content } = req.body;
+      const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+      const attachments = Array.isArray(req.body.attachments)
+        ? req.body.attachments.slice(0, 10)
+        : [];
+      const attachmentNames = attachments
+        .filter((attachment: any) => typeof attachment?.name === "string")
+        .map((attachment: any) => attachment.name);
+      const storedContent = [
+        content,
+        attachmentNames.length ? `Attached files: ${attachmentNames.join(", ")}` : "",
+      ].filter(Boolean).join("\n\n") || "Please analyze the attached files.";
 
       // Save user message
-      await chatStorage.createMessage(conversationId, "user", content);
+      await chatStorage.createMessage(conversationId, "user", storedContent);
 
       // Auto-title on first message
       const allMsgs = await chatStorage.getMessagesByConversation(conversationId);
       if (allMsgs.length === 1) {
-        const title = content.trim().slice(0, 50) + (content.trim().length > 50 ? "…" : "");
+        const titleSource = content || attachmentNames.join(", ") || "Attached files";
+        const title = titleSource.slice(0, 50) + (titleSource.length > 50 ? "…" : "");
         await chatStorage.updateConversationTitle(conversationId, title);
       }
 
@@ -111,10 +125,33 @@ export function registerChatRoutes(app: Express): void {
       // GitHub Models gpt-4o-mini: 128K context window
       // Reserve 16384 for output + ~300 for system prompt = ~110,000 for conversation history
       const messages = await chatStorage.getMessagesByConversation(conversationId);
-      const rawHistory = messages.map((m) => ({
+      const rawHistory: any[] = messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       }));
+      const latestUserMessage = rawHistory[rawHistory.length - 1];
+      const imageAttachments = attachments.filter((attachment: any) =>
+        typeof attachment?.dataUrl === "string" &&
+        attachment.dataUrl.startsWith("data:image/"),
+      );
+      const textAttachments = attachments.filter((attachment: any) =>
+        typeof attachment?.textContent === "string",
+      );
+      if (latestUserMessage?.role === "user" && (imageAttachments.length || textAttachments.length)) {
+        const textParts = [
+          content || "Please analyze the attached files.",
+          ...textAttachments.map((attachment: any) =>
+            `\n\n--- ${attachment.name || "Attached text file"} ---\n${attachment.textContent}`,
+          ),
+        ];
+        latestUserMessage.content = [
+          { type: "text", text: textParts.join("") },
+          ...imageAttachments.map((attachment: any) => ({
+            type: "image_url",
+            image_url: { url: attachment.dataUrl },
+          })),
+        ];
+      }
       const chatMessages = trimHistory(rawHistory, 110000);
 
       const systemMessage = {
@@ -176,9 +213,10 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // DeepSeek V3 via OpenRouter: excellent for code, large context, fast
+      // Use a vision-capable model whenever an image is attached. Text-only
+      // chats stay on DeepSeek for strong code generation.
       const stream = await openai.chat.completions.create({
-        model: "deepseek/deepseek-chat",
+        model: imageAttachments.length ? "google/gemini-2.0-flash-001" : "deepseek/deepseek-chat",
         messages: [systemMessage, ...chatMessages],
         stream: true,
         max_tokens: 32768,

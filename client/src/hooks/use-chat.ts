@@ -90,13 +90,27 @@ export function useDeleteConversation() {
   });
 }
 
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl?: string;
+  textContent?: string;
+}
+
 // Send message with streaming response
 export function useSendMessage() {
   const queryClient = useQueryClient();
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const sendMessage = useCallback(async (conversationId: number, content: string, onChunk: (chunk: string) => void) => {
+  const sendMessage = useCallback(async (
+    conversationId: number,
+    content: string,
+    onChunk: (chunk: string) => void,
+    attachments: ChatAttachment[] = [],
+  ) => {
     setIsStreaming(true);
     abortControllerRef.current = new AbortController();
 
@@ -106,7 +120,7 @@ export function useSendMessage() {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, attachments }),
         signal: abortControllerRef.current.signal,
       });
 
