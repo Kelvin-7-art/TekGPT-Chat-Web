@@ -213,10 +213,10 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // Use a vision-capable model whenever an image is attached. Text-only
-      // chats stay on DeepSeek for strong code generation.
+      // Use a currently available vision-capable model whenever an image is
+      // attached. Text-only chats stay on DeepSeek for strong code generation.
       const stream = await openai.chat.completions.create({
-        model: imageAttachments.length ? "google/gemini-2.0-flash-001" : "deepseek/deepseek-chat",
+        model: imageAttachments.length ? "openai/gpt-4o-mini" : "deepseek/deepseek-chat",
         messages: [systemMessage, ...chatMessages],
         stream: true,
         max_tokens: 32768,
@@ -245,6 +245,8 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       let userError = "Failed to send message. Please try again.";
       if (error?.status === 413) {
         userError = "Your message is too large. Try splitting it into smaller sections and send each part separately.";
+      } else if (error?.status === 404) {
+        userError = "The selected AI model is currently unavailable on OpenRouter. Please try again or choose a different model.";
       } else if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
         userError = "Rate limit reached. Please wait a moment and try again.";
       } else if (error?.status === 401) {
