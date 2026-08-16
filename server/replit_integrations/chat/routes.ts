@@ -1,13 +1,11 @@
 import type { Express, Request, Response } from "express";
-import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
-// Ollama is OpenAI-compatible. By default this targets a local Ollama
-// server; set OLLAMA_BASE_URL when Ollama runs on another reachable host.
-const ollama = new OpenAI({
-  apiKey: process.env.OLLAMA_API_KEY || "ollama",
-  baseURL: (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1").replace(/\/+$/, ""),
-});
+// Ollama's native API is used instead of its OpenAI-compatible endpoint
+// because older Ollama versions only accept string content on /v1/chat.
+const ollamaBaseUrl = (
+  process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434"
+).replace(/\/v1\/?$/, "").replace(/\/+$/, "");
 
 // Rough token estimate: 1 token ≈ 4 chars
 function estimateTokens(text: string): number {
@@ -37,6 +35,35 @@ function trimHistory(
   }
 
   return kept;
+}
+
+function toOllamaMessages(messages: any[]) {
+  return messages.map((message) => {
+    if (!Array.isArray(message.content)) {
+      return {
+        role: message.role,
+        content: typeof message.content === "string" ? message.content : String(message.content ?? ""),
+      };
+    }
+
+    const textParts: string[] = [];
+    const images: string[] = [];
+    for (const part of message.content) {
+      if (part?.type === "text" && typeof part.text === "string") {
+        textParts.push(part.text);
+      }
+      if (part?.type === "image_url" && typeof part.image_url?.url === "string") {
+        const url = part.image_url.url;
+        images.push(url.includes(",") ? url.split(",", 2)[1] : url);
+      }
+    }
+
+    return {
+      role: message.role,
+      content: textParts.join("\n\n"),
+      ...(images.length ? { images } : {}),
+    };
+  });
 }
 
 export function registerChatRoutes(app: Express): void {
@@ -145,8 +172,12 @@ export function registerChatRoutes(app: Express): void {
         ];
       }
       // LLaVA models generally have a smaller context window than hosted
-      // frontier models, so keep a practical amount of recent context.
-      const chatMessages = trimHistory(rawHistory, 24000);
+      // frontier models. Image requests also need a shorter context so CPU
+      // inference stays responsive.
+      const chatMessages = trimHistory(
+        rawHistory,
+        imageAttachments.length ? 8000 : 24000,
+      );
 
       const systemMessage = {
         role: "system" as const,
@@ -199,7 +230,10 @@ When the user asks you to fix, debug, correct, update, improve, refactor, or mod
 - If the code is long, did I continue in numbered parts rather than truncate?
 If any answer is "no" — keep generating.
 
-Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python, \`\`\`typescript).`,
+Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python, \`\`\`typescript).
+${imageAttachments.length
+  ? "\n\n### IMAGE ANALYSIS MODE\nDescribe the attached image directly and concisely. Do not invent code or produce a long implementation unless the user explicitly asks for it."
+  : ""}`,
       };
 
       // Set up SSE
@@ -207,23 +241,64 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // LLaVA handles both text and image messages through Ollama's
-      // OpenAI-compatible /v1/chat/completions endpoint.
-      const stream = await ollama.chat.completions.create({
-        model: process.env.OLLAMA_MODEL || "llava",
-        messages: [systemMessage, ...chatMessages],
-        stream: true,
-        max_tokens: 8192,
-        temperature: 0.1,
+      let fullResponse = "";
+      const ollamaHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (process.env.OLLAMA_API_KEY) {
+        ollamaHeaders.Authorization = `Bearer ${process.env.OLLAMA_API_KEY}`;
+      }
+
+      // Use Ollama's native API. Its /v1 compatibility endpoint in older
+      // releases rejects multimodal array content; /api/chat expects the
+      // image as a base64 string in the message.images field.
+      const ollamaResponse = await fetch(`${ollamaBaseUrl}/api/chat`, {
+        method: "POST",
+        headers: ollamaHeaders,
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL || "llava",
+          messages: toOllamaMessages([systemMessage, ...chatMessages]),
+          stream: true,
+          options: {
+            temperature: 0.1,
+            num_predict: imageAttachments.length ? 1024 : 8192,
+          },
+        }),
       });
 
-      let fullResponse = "";
+      if (!ollamaResponse.ok) {
+        const providerError = await ollamaResponse.text();
+        const error: any = new Error(providerError || `Ollama request failed with status ${ollamaResponse.status}`);
+        error.status = ollamaResponse.status;
+        if (ollamaResponse.status === 404) error.code = "model_not_found";
+        throw error;
+      }
+      if (!ollamaResponse.body) {
+        throw new Error("Ollama returned no response body");
+      }
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      const reader = ollamaResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const chunk = JSON.parse(line);
+          if (chunk.error) throw new Error(chunk.error);
+          const chunkContent = chunk.message?.content || "";
+          if (chunkContent) {
+            fullResponse += chunkContent;
+            res.write(`data: ${JSON.stringify({ content: chunkContent })}\n\n`);
+          }
+          streamDone = Boolean(chunk.done);
         }
       }
 
