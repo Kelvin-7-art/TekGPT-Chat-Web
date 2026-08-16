@@ -107,25 +107,20 @@ export function registerChatRoutes(app: Express): void {
         attachmentNames.length ? `Attached files: ${attachmentNames.join(", ")}` : "",
       ].filter(Boolean).join("\n\n") || "Please analyze the attached files.";
 
-      // Save user message
-      await chatStorage.createMessage(conversationId, "user", storedContent);
-
-      // Auto-title on first message
-      const allMsgs = await chatStorage.getMessagesByConversation(conversationId);
-      if (allMsgs.length === 1) {
-        const titleSource = content || attachmentNames.join(", ") || "Attached files";
-        const title = titleSource.slice(0, 50) + (titleSource.length > 50 ? "…" : "");
-        await chatStorage.updateConversationTitle(conversationId, title);
-      }
-
-      // Get conversation history and trim to fit token budget
-      // GitHub Models gpt-4o-mini: 128K context window
-      // Reserve 16384 for output + ~300 for system prompt = ~110,000 for conversation history
-      const messages = await chatStorage.getMessagesByConversation(conversationId);
-      const rawHistory: any[] = messages.map((m) => ({
+      // Read existing history without saving the new message yet. Failed
+      // provider requests must not leave a duplicate user message in the DB.
+      const existingMessages = await chatStorage.getMessagesByConversation(conversationId);
+      const rawHistory: any[] = existingMessages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       }));
+
+      // Add the current request only to the provider context. It is persisted
+      // after the provider finishes successfully.
+      rawHistory.push({
+        role: "user",
+        content: storedContent,
+      });
       const latestUserMessage = rawHistory[rawHistory.length - 1];
       const imageAttachments = attachments.filter((attachment: any) =>
         typeof attachment?.dataUrl === "string" &&
@@ -232,8 +227,14 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
         }
       }
 
-      // Save assistant message
+      // Persist both messages only after a complete successful response.
+      await chatStorage.createMessage(conversationId, "user", storedContent);
       await chatStorage.createMessage(conversationId, "assistant", fullResponse);
+      if (existingMessages.length === 0) {
+        const titleSource = content || attachmentNames.join(", ") || "Attached files";
+        const title = titleSource.slice(0, 50) + (titleSource.length > 50 ? "…" : "");
+        await chatStorage.updateConversationTitle(conversationId, title);
+      }
 
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
