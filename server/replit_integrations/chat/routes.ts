@@ -2,14 +2,11 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
-// OpenRouter API — OpenAI-compatible, access to hundreds of models
-const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-  defaultHeaders: {
-    "HTTP-Referer": "https://tekgpt.replit.app",
-    "X-Title": "TekGPT",
-  },
+// Ollama is OpenAI-compatible. By default this targets a local Ollama
+// server; set OLLAMA_BASE_URL when Ollama runs on another reachable host.
+const ollama = new OpenAI({
+  apiKey: process.env.OLLAMA_API_KEY || "ollama",
+  baseURL: (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1").replace(/\/+$/, ""),
 });
 
 // Rough token estimate: 1 token ≈ 4 chars
@@ -152,7 +149,9 @@ export function registerChatRoutes(app: Express): void {
           })),
         ];
       }
-      const chatMessages = trimHistory(rawHistory, 110000);
+      // LLaVA models generally have a smaller context window than hosted
+      // frontier models, so keep a practical amount of recent context.
+      const chatMessages = trimHistory(rawHistory, 24000);
 
       const systemMessage = {
         role: "system" as const,
@@ -213,13 +212,13 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // Use a currently available vision-capable model whenever an image is
-      // attached. Text-only chats stay on DeepSeek for strong code generation.
-      const stream = await openai.chat.completions.create({
-        model: imageAttachments.length ? "openai/gpt-4o-mini" : "deepseek/deepseek-chat",
+      // LLaVA handles both text and image messages through Ollama's
+      // OpenAI-compatible /v1/chat/completions endpoint.
+      const stream = await ollama.chat.completions.create({
+        model: process.env.OLLAMA_MODEL || "llava",
         messages: [systemMessage, ...chatMessages],
         stream: true,
-        max_tokens: 32768,
+        max_tokens: 8192,
         temperature: 0.1,
       });
 
@@ -245,14 +244,20 @@ Use proper markdown code blocks with the correct language tag (e.g. \`\`\`python
       let userError = "Failed to send message. Please try again.";
       if (error?.status === 413) {
         userError = "Your message is too large. Try splitting it into smaller sections and send each part separately.";
-      } else if (error?.status === 404) {
-        userError = "The selected AI model is currently unavailable on OpenRouter. Please try again or choose a different model.";
+      } else if (error?.status === 404 || error?.code === "model_not_found") {
+        userError = `Ollama cannot find the "${process.env.OLLAMA_MODEL || "llava"}" model. Run "ollama pull ${process.env.OLLAMA_MODEL || "llava"}" and try again.`;
       } else if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
-        userError = "Rate limit reached. Please wait a moment and try again.";
+        userError = "Ollama is busy. Please wait a moment and try again.";
       } else if (error?.status === 401) {
-        userError = "OpenRouter API key is invalid or expired. Please update the OPENROUTER_API_KEY secret.";
+        userError = "Ollama rejected the request. Check OLLAMA_API_KEY or remove it when using a local Ollama server.";
       } else if (error?.status === 402) {
-        userError = "OpenRouter account has insufficient credits. Please top up at openrouter.ai.";
+        userError = "The configured Ollama provider requires an active account or sufficient credits.";
+      } else if (
+        error?.code === "ECONNREFUSED" ||
+        error?.cause?.code === "ECONNREFUSED" ||
+        /connect|fetch failed|network/i.test(error?.message || "")
+      ) {
+        userError = `Cannot connect to Ollama at ${process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434"}. Start Ollama and run "ollama pull ${process.env.OLLAMA_MODEL || "llava"}", or configure OLLAMA_BASE_URL to a reachable Ollama server.`;
       }
 
       if (res.headersSent) {
