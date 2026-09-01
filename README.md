@@ -201,9 +201,6 @@ TeKGPT/
 │   └── index.html
 │
 ├── 📁 server/                 # Node.js backend
-│   ├── 📁 replit_integrations/
-│   │   ├── 📁 chat/           # Chat API
-│   │   └── 📁 vision/         # Vision API
 │   ├── db.ts                  # Database config
 │   ├── index.ts               # Server entry
 │   └── routes.ts              # API routes
