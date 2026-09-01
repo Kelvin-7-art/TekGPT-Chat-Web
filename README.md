@@ -24,7 +24,7 @@
 
 ### 📱 Quick Demo GIF
 
-![TeKGPT Demo](media/demo.gif)
+![TeKGPT Demo](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/TekGPT.gif)
 
 ### 🖼️ Image Analysis Demo
 
