@@ -104,8 +104,8 @@ Before you begin, ensure you have installed:
 ### 1. Clone the Repository
 
 \\\ash
-git clone https://github.com/YOUR_USERNAME/TeKGPT.git
-cd TeKGPT
+git clone https://github.com/Kelvin-7-art/TekGPT-Chat-Web.git
+cd Chat-Web
 \\\
 
 ### 2. Install Dependencies
@@ -131,10 +131,7 @@ psql -U postgres -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE chatdb TO khot
 
 Create a .env file in the root directory:
 
-\\\env
-DATABASE_URL=postgresql://khots:your_password@localhost:5432/chatdb
-PORT=5000
-\\\
+
 
 ### 5. Run Database Migrations
 
