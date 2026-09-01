@@ -340,9 +340,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 📞 Contact
 
 **Your Name**
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
-- LinkedIn: [YOUR_LINKEDIN](https://linkedin.com/in/YOUR_LINKEDIN)
-- Email: your.email@example.com
+- GitHub: [@Kelvin-7-art](https://github.com/Kelvin-7-art/TekGPT-Chat-Web)
+- LinkedIn: [Kelvin Kgarudi](https://www.linkedin.com/in/kelvin-k-641837291/)
+- Email: kgotsokgarudi@gmail.com
 
 ## ⭐ Show Your Support
 
