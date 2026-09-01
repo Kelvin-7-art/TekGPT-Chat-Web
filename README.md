@@ -331,7 +331,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🙏 Acknowledgments
 
-- **[Replit](https://replit.com)** - Initial project structure
 - **[Ollama](https://ollama.com)** - Local AI deployment
 - **[LLaVA](https://llava-vl.github.io/)** - Vision-language model
 - **[Vite](https://vitejs.dev/)** - Build tool
