@@ -28,7 +28,7 @@
 
 ### 🖼️ Image Analysis Demo
 
-![Image Analysis](media/image-analysis.gif)
+![Image Analysis](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/image%20analysis.gif)
 
 </div>
 
