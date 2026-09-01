@@ -12,15 +12,6 @@
 
 > **An AI-powered chat application with vision capabilities** - Upload images, ask questions, and get intelligent responses powered by LLaVA and local AI.
 
-## 📹 Demo Video
-
-<div align="center">
-  
-### 🎥 Watch TeKGPT in Action
-
-[![TeKGPT Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
-
-*Click the image above to watch the full demo video*
 
 ### 📱 Quick Demo GIF
 
@@ -56,42 +47,22 @@
 <div align="center">
 
 ### Main Interface
-![Main Interface](screenshots/main-interface.png)
+![Main Interface](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/TekGPT%20home.png)
 
 ### Image Analysis
-![Image Analysis](screenshots/image-analysis.png)
+![Image Analysis](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/tekgpt%20image.png)
 
 ### Chat History
-![Chat History](screenshots/chat-history.png)
+![Chat History](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/history.png)
 
 ### Mobile View
-![Mobile View](screenshots/mobile-view.png)
+![Mobile View](https://github.com/Kelvin-7-art/TekGPT-Chat-Web/blob/main/mobile%20tekgpt.png)
 
-### AI in Action
-![AI Response](screenshots/ai-response.png)
+
 
 </div>
 
-## 🎥 Creating Your Own Demo
 
-### Quick GIF Creation (Using ScreenToGif)
-
-1. Download [ScreenToGif](https://www.screentogif.com/)
-2. Record your screen
-3. Export as GIF
-4. Save to media/ folder
-
-### Video Walkthrough Script
-
-\\\
-1. Open the application (0:00)
-2. Create a new chat (0:10)
-3. Ask a coding question (0:20)
-4. Upload an image (0:40)
-5. Analyze the image (1:00)
-6. Search conversations (1:20)
-7. Switch between chats (1:30)
-\\\
 
 ## 🛠️ Technology Stack
 
